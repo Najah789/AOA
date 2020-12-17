@@ -31,9 +31,9 @@ Activé aux niveaux `-O2`, `-O3`, `-Os`. Également activé `par-fprofile-use` e
 `-ftree-vectorize :` Effectuer la vectorisation sur les arbres. Cet indicateur permet `-ftree-loop-vectorize` et `-ftree-slp-vectorize` s'il n'est pas spécifié explicitement.
 
 
+# Code non déroulé :
 # Compilateur X86-64 gcc 10.2
 
-Premier Code : 
 
 ```
 double dotprod(double *restrict a, double *restrict b, unsigned long long n)
@@ -87,7 +87,7 @@ dotprod:
         ret
 ```
 Comparaison entre -O1 et -O2 : 
-On remarque que  mov     eax, 0 dans -O1 a été remplacer par xor     eax dans -O2 au lieu de copier 0 pour initialiser le registre à intialiser dans -O1 on exécute un XOR (ou exclusif sur le regitre, et on remarque aussi que le cache L1 n'est plus utilisé.
+On remarque que  mov     eax, 0 dans -O1 a été remplacer par xor     eax, eax dans -O2 au lieu de copier 0 pour initialiser le registre à intialiser dans -O1 on exécute un XOR (ou exclusif sur le regitre, et on remarque aussi que le cache L1 n'est plus utilisé.
 On remarque aussi que les instructions les plus utiliser sont des instructions scalaires dans les deux options.
 
 
@@ -304,282 +304,6 @@ Comparaison :
 On remarque l'utilisation des registres vectorielles AVX (ymm0 et ymm2 .. ) qui s'utilise que dans des code purement vectorielle, mais on remarque de quelques instructions scalaires quand la vectorisation est impossible.
 On remarque aussi l'utilisation de VFMADD231SD ymm0, ymm2, YMMWORD PTR [rsi] qui Multiplie la valeur à virgule flottante double précision scalaire.
 
-Deuxième Code : 
-```
-double dotprod_unroll2(double *restrict a, double *restrict b, unsigned long long n)
-{
-double d1 = 0.0;
-double d2 = 0.0;
-for (unsigned long long i = 0; i < n; i += 2)
-{
-d1 += (a[i] * b[i]);
-d2 += (a[i + 1] * b[i + 1]);
-}
-return (d1 + d2);
-}
-```
--O1 : 
-```
-dotprod_unroll2:
-        test    rdx, rdx
-        je      .L4
-        mov     eax, 0
-        pxor    xmm2, xmm2
-        movapd  xmm1, xmm2
-.L3:
-        movsd   xmm0, QWORD PTR [rdi+rax*8]
-        mulsd   xmm0, QWORD PTR [rsi+rax*8]
-        addsd   xmm1, xmm0
-        movsd   xmm0, QWORD PTR [rdi+8+rax*8]
-        mulsd   xmm0, QWORD PTR [rsi+8+rax*8]
-        addsd   xmm2, xmm0
-        add     rax, 2
-        cmp     rdx, rax
-        ja      .L3
-.L2:
-        addsd   xmm1, xmm2
-        movapd  xmm0, xmm1
-        ret
-.L4:
-        pxor    xmm2, xmm2
-        movapd  xmm1, xmm2
-        jmp     .L2
-```
--O2 : 
-```
-dotprod_unroll2:
-        test    rdx, rdx
-        je      .L4
-        pxor    xmm2, xmm2
-        xor     eax, eax
-        movapd  xmm1, xmm2
-.L3:
-        movsd   xmm0, QWORD PTR [rdi+rax*8]
-        mulsd   xmm0, QWORD PTR [rsi+rax*8]
-        addsd   xmm1, xmm0
-        movsd   xmm0, QWORD PTR [rdi+8+rax*8]
-        mulsd   xmm0, QWORD PTR [rsi+8+rax*8]
-        add     rax, 2
-        addsd   xmm2, xmm0
-        cmp     rdx, rax
-        ja      .L3
-        addsd   xmm1, xmm2
-        movapd  xmm0, xmm1
-        ret
-.L4:
-        pxor    xmm0, xmm0
-        ret
-```
--O3 :
-```
-dotprod_unroll2:
-        test    rdx, rdx
-        je      .L6
-        sub     rdx, 1
-        mov     rcx, rdx
-        shr     rcx
-        add     rcx, 1
-        cmp     rdx, 1
-        jbe     .L7
-        mov     rdx, rcx
-        pxor    xmm1, xmm1
-        xor     eax, eax
-        shr     rdx
-        movapd  xmm3, xmm1
-        sal     rdx, 5
-.L4:
-        movupd  xmm2, XMMWORD PTR [rdi+rax]
-        movupd  xmm0, XMMWORD PTR [rsi+rax]
-        movhpd  xmm2, QWORD PTR [rdi+16+rax]
-        movhpd  xmm0, QWORD PTR [rsi+16+rax]
-        mulpd   xmm2, xmm0
-        movapd  xmm0, xmm2
-        unpckhpd        xmm2, xmm2
-        addsd   xmm0, xmm3
-        movapd  xmm3, xmm2
-        movupd  xmm2, XMMWORD PTR [rsi+16+rax]
-        movlpd  xmm2, QWORD PTR [rsi+8+rax]
-        addsd   xmm3, xmm0
-        movupd  xmm0, XMMWORD PTR [rdi+16+rax]
-        movlpd  xmm0, QWORD PTR [rdi+8+rax]
-        add     rax, 32
-        mulpd   xmm0, xmm2
-        addsd   xmm1, xmm0
-        unpckhpd        xmm0, xmm0
-        addsd   xmm1, xmm0
-        cmp     rax, rdx
-        jne     .L4
-        mov     rdx, rcx
-        and     rdx, -2
-        lea     rax, [rdx+rdx]
-        cmp     rdx, rcx
-        je      .L5
-.L3:
-        movsd   xmm0, QWORD PTR [rsi+rax*8]
-        mulsd   xmm0, QWORD PTR [rdi+rax*8]
-        addsd   xmm3, xmm0
-        movsd   xmm0, QWORD PTR [rsi+8+rax*8]
-        mulsd   xmm0, QWORD PTR [rdi+8+rax*8]
-        addsd   xmm1, xmm0
-.L5:
-        addsd   xmm1, xmm3
-        movapd  xmm0, xmm1
-        ret
-.L6:
-        pxor    xmm0, xmm0
-        ret
-.L7:
-        pxor    xmm1, xmm1
-        xor     eax, eax
-        movapd  xmm3, xmm1
-        jmp     .L3
-```
--Ofast :
-```
-dotprod_unroll2:
-        test    rdx, rdx
-        je      .L4
-        sub     rdx, 1
-        xor     eax, eax
-        pxor    xmm1, xmm1
-        shr     rdx
-        lea     rcx, [rdx+1]
-        xor     edx, edx
-.L3:
-        movupd  xmm0, XMMWORD PTR [rsi+rax]
-        movupd  xmm3, XMMWORD PTR [rdi+rax]
-        add     rdx, 1
-        add     rax, 16
-        mulpd   xmm0, xmm3
-        addpd   xmm1, xmm0
-        cmp     rdx, rcx
-        jb      .L3
-        movapd  xmm4, xmm1
-        movapd  xmm0, xmm1
-        unpckhpd        xmm4, xmm4
-        addsd   xmm0, xmm4
-        ret
-.L4:
-        pxor    xmm0, xmm0
-        ret
-```
-kamikaze:
-```
-dotprod_unroll2:
-        test    rdx, rdx
-        je      .L6
-        dec     rdx
-        mov     rcx, rdx
-        shr     rcx
-        inc     rcx
-        cmp     rdx, 1
-        jbe     .L7
-        mov     r8, rcx
-        shr     r8
-        sal     r8, 5
-        lea     rdx, [r8-32]
-        shr     rdx, 5
-        inc     rdx
-        xor     eax, eax
-        vxorpd  xmm0, xmm0, xmm0
-        and     edx, 7
-        je      .L4
-        cmp     rdx, 1
-        je      .L30
-        cmp     rdx, 2
-        je      .L31
-        cmp     rdx, 3
-        je      .L32
-        cmp     rdx, 4
-        je      .L33
-        cmp     rdx, 5
-        je      .L34
-        cmp     rdx, 6
-        jne     .L47
-.L35:
-        vmovupd ymm4, YMMWORD PTR [rsi+rax]
-        vfmadd231pd     ymm0, ymm4, YMMWORD PTR [rdi+rax]
-        add     rax, 32
-.L34:
-        vmovupd ymm7, YMMWORD PTR [rsi+rax]
-        vfmadd231pd     ymm0, ymm7, YMMWORD PTR [rdi+rax]
-        add     rax, 32
-.L33:
-        vmovupd ymm6, YMMWORD PTR [rsi+rax]
-        vfmadd231pd     ymm0, ymm6, YMMWORD PTR [rdi+rax]
-        add     rax, 32
-.L32:
-        vmovupd ymm5, YMMWORD PTR [rsi+rax]
-        vfmadd231pd     ymm0, ymm5, YMMWORD PTR [rdi+rax]
-        add     rax, 32
-.L31:
-        vmovupd ymm1, YMMWORD PTR [rsi+rax]
-        vfmadd231pd     ymm0, ymm1, YMMWORD PTR [rdi+rax]
-        add     rax, 32
-.L30:
-        vmovupd ymm2, YMMWORD PTR [rsi+rax]
-        vfmadd231pd     ymm0, ymm2, YMMWORD PTR [rdi+rax]
-        add     rax, 32
-        cmp     rax, r8
-        je      .L44
-.L4:
-        vmovupd ymm8, YMMWORD PTR [rsi+rax]
-        vmovupd ymm9, YMMWORD PTR [rsi+32+rax]
-        vfmadd231pd     ymm0, ymm8, YMMWORD PTR [rdi+rax]
-        vmovupd ymm10, YMMWORD PTR [rsi+64+rax]
-        vmovupd ymm11, YMMWORD PTR [rsi+96+rax]
-        vmovupd ymm12, YMMWORD PTR [rsi+128+rax]
-        vmovupd ymm13, YMMWORD PTR [rsi+160+rax]
-        vfmadd231pd     ymm0, ymm9, YMMWORD PTR [rdi+32+rax]
-        vmovupd ymm14, YMMWORD PTR [rsi+192+rax]
-        vmovupd ymm15, YMMWORD PTR [rsi+224+rax]
-        vfmadd231pd     ymm0, ymm10, YMMWORD PTR [rdi+64+rax]
-        vfmadd231pd     ymm0, ymm11, YMMWORD PTR [rdi+96+rax]
-        vfmadd231pd     ymm0, ymm12, YMMWORD PTR [rdi+128+rax]
-        vfmadd231pd     ymm0, ymm13, YMMWORD PTR [rdi+160+rax]
-        vfmadd231pd     ymm0, ymm14, YMMWORD PTR [rdi+192+rax]
-        vfmadd231pd     ymm0, ymm15, YMMWORD PTR [rdi+224+rax]
-        add     rax, 256
-        cmp     rax, r8
-        jne     .L4
-.L44:
-        vmovapd xmm3, xmm0
-        vextractf64x2   xmm0, ymm0, 0x1
-        vaddpd  xmm4, xmm3, xmm0
-        mov     r9, rcx
-        and     r9, -2
-        and     ecx, 1
-        vmovsd  xmm2, xmm4, xmm4
-        vunpckhpd       xmm0, xmm4, xmm4
-        je      .L48
-        vzeroupper
-.L3:
-        sal     r9, 4
-        vmovupd xmm6, XMMWORD PTR [rdi+r9]
-        vunpcklpd       xmm7, xmm2, xmm0
-        vfmadd132pd     xmm6, xmm7, XMMWORD PTR [rsi+r9]
-        vmovsd  xmm2, xmm6, xmm6
-        vunpckhpd       xmm0, xmm6, xmm6
-        vaddsd  xmm0, xmm0, xmm2
-        ret
-.L48:
-        vzeroupper
-        vaddsd  xmm0, xmm0, xmm2
-        ret
-.L47:
-        vmovupd ymm3, YMMWORD PTR [rsi]
-        mov     eax, 32
-        vfmadd231pd     ymm0, ymm3, YMMWORD PTR [rdi]
-        jmp     .L35
-.L6:
-        vxorpd  xmm0, xmm0, xmm0
-        ret
-.L7:
-        vxorpd  xmm0, xmm0, xmm0
-        xor     r9d, r9d
-        vmovsd  xmm2, xmm0, xmm0
-        jmp     .L3
-```
 
 # Compilateur x86-64 Clang 11.0.0
 
@@ -880,7 +604,292 @@ dotprod:                                # @dotprod
         jne     .LBB0_9
         jmp     .LBB0_10
 ```
-Deuxième Code : 
+
+
+
+
+
+# Code déroulé 2 fois : 
+# Compilateur x86-64 Clang 11.0.0
+
+```
+double dotprod_unroll2(double *restrict a, double *restrict b, unsigned long long n)
+{
+double d1 = 0.0;
+double d2 = 0.0;
+for (unsigned long long i = 0; i < n; i += 2)
+{
+d1 += (a[i] * b[i]);
+d2 += (a[i + 1] * b[i + 1]);
+}
+return (d1 + d2);
+}
+```
+-O1 : 
+```
+dotprod_unroll2:
+        test    rdx, rdx
+        je      .L4
+        mov     eax, 0
+        pxor    xmm2, xmm2
+        movapd  xmm1, xmm2
+.L3:
+        movsd   xmm0, QWORD PTR [rdi+rax*8]
+        mulsd   xmm0, QWORD PTR [rsi+rax*8]
+        addsd   xmm1, xmm0
+        movsd   xmm0, QWORD PTR [rdi+8+rax*8]
+        mulsd   xmm0, QWORD PTR [rsi+8+rax*8]
+        addsd   xmm2, xmm0
+        add     rax, 2
+        cmp     rdx, rax
+        ja      .L3
+.L2:
+        addsd   xmm1, xmm2
+        movapd  xmm0, xmm1
+        ret
+.L4:
+        pxor    xmm2, xmm2
+        movapd  xmm1, xmm2
+        jmp     .L2
+```
+-O2 : 
+```
+dotprod_unroll2:
+        test    rdx, rdx
+        je      .L4
+        pxor    xmm2, xmm2
+        xor     eax, eax
+        movapd  xmm1, xmm2
+.L3:
+        movsd   xmm0, QWORD PTR [rdi+rax*8]
+        mulsd   xmm0, QWORD PTR [rsi+rax*8]
+        addsd   xmm1, xmm0
+        movsd   xmm0, QWORD PTR [rdi+8+rax*8]
+        mulsd   xmm0, QWORD PTR [rsi+8+rax*8]
+        add     rax, 2
+        addsd   xmm2, xmm0
+        cmp     rdx, rax
+        ja      .L3
+        addsd   xmm1, xmm2
+        movapd  xmm0, xmm1
+        ret
+.L4:
+        pxor    xmm0, xmm0
+        ret
+```
+-O3 :
+```
+dotprod_unroll2:
+        test    rdx, rdx
+        je      .L6
+        sub     rdx, 1
+        mov     rcx, rdx
+        shr     rcx
+        add     rcx, 1
+        cmp     rdx, 1
+        jbe     .L7
+        mov     rdx, rcx
+        pxor    xmm1, xmm1
+        xor     eax, eax
+        shr     rdx
+        movapd  xmm3, xmm1
+        sal     rdx, 5
+.L4:
+        movupd  xmm2, XMMWORD PTR [rdi+rax]
+        movupd  xmm0, XMMWORD PTR [rsi+rax]
+        movhpd  xmm2, QWORD PTR [rdi+16+rax]
+        movhpd  xmm0, QWORD PTR [rsi+16+rax]
+        mulpd   xmm2, xmm0
+        movapd  xmm0, xmm2
+        unpckhpd        xmm2, xmm2
+        addsd   xmm0, xmm3
+        movapd  xmm3, xmm2
+        movupd  xmm2, XMMWORD PTR [rsi+16+rax]
+        movlpd  xmm2, QWORD PTR [rsi+8+rax]
+        addsd   xmm3, xmm0
+        movupd  xmm0, XMMWORD PTR [rdi+16+rax]
+        movlpd  xmm0, QWORD PTR [rdi+8+rax]
+        add     rax, 32
+        mulpd   xmm0, xmm2
+        addsd   xmm1, xmm0
+        unpckhpd        xmm0, xmm0
+        addsd   xmm1, xmm0
+        cmp     rax, rdx
+        jne     .L4
+        mov     rdx, rcx
+        and     rdx, -2
+        lea     rax, [rdx+rdx]
+        cmp     rdx, rcx
+        je      .L5
+.L3:
+        movsd   xmm0, QWORD PTR [rsi+rax*8]
+        mulsd   xmm0, QWORD PTR [rdi+rax*8]
+        addsd   xmm3, xmm0
+        movsd   xmm0, QWORD PTR [rsi+8+rax*8]
+        mulsd   xmm0, QWORD PTR [rdi+8+rax*8]
+        addsd   xmm1, xmm0
+.L5:
+        addsd   xmm1, xmm3
+        movapd  xmm0, xmm1
+        ret
+.L6:
+        pxor    xmm0, xmm0
+        ret
+.L7:
+        pxor    xmm1, xmm1
+        xor     eax, eax
+        movapd  xmm3, xmm1
+        jmp     .L3
+```
+-Ofast :
+```
+dotprod_unroll2:
+        test    rdx, rdx
+        je      .L4
+        sub     rdx, 1
+        xor     eax, eax
+        pxor    xmm1, xmm1
+        shr     rdx
+        lea     rcx, [rdx+1]
+        xor     edx, edx
+.L3:
+        movupd  xmm0, XMMWORD PTR [rsi+rax]
+        movupd  xmm3, XMMWORD PTR [rdi+rax]
+        add     rdx, 1
+        add     rax, 16
+        mulpd   xmm0, xmm3
+        addpd   xmm1, xmm0
+        cmp     rdx, rcx
+        jb      .L3
+        movapd  xmm4, xmm1
+        movapd  xmm0, xmm1
+        unpckhpd        xmm4, xmm4
+        addsd   xmm0, xmm4
+        ret
+.L4:
+        pxor    xmm0, xmm0
+        ret
+```
+kamikaze:
+```
+dotprod_unroll2:
+        test    rdx, rdx
+        je      .L6
+        dec     rdx
+        mov     rcx, rdx
+        shr     rcx
+        inc     rcx
+        cmp     rdx, 1
+        jbe     .L7
+        mov     r8, rcx
+        shr     r8
+        sal     r8, 5
+        lea     rdx, [r8-32]
+        shr     rdx, 5
+        inc     rdx
+        xor     eax, eax
+        vxorpd  xmm0, xmm0, xmm0
+        and     edx, 7
+        je      .L4
+        cmp     rdx, 1
+        je      .L30
+        cmp     rdx, 2
+        je      .L31
+        cmp     rdx, 3
+        je      .L32
+        cmp     rdx, 4
+        je      .L33
+        cmp     rdx, 5
+        je      .L34
+        cmp     rdx, 6
+        jne     .L47
+.L35:
+        vmovupd ymm4, YMMWORD PTR [rsi+rax]
+        vfmadd231pd     ymm0, ymm4, YMMWORD PTR [rdi+rax]
+        add     rax, 32
+.L34:
+        vmovupd ymm7, YMMWORD PTR [rsi+rax]
+        vfmadd231pd     ymm0, ymm7, YMMWORD PTR [rdi+rax]
+        add     rax, 32
+.L33:
+        vmovupd ymm6, YMMWORD PTR [rsi+rax]
+        vfmadd231pd     ymm0, ymm6, YMMWORD PTR [rdi+rax]
+        add     rax, 32
+.L32:
+        vmovupd ymm5, YMMWORD PTR [rsi+rax]
+        vfmadd231pd     ymm0, ymm5, YMMWORD PTR [rdi+rax]
+        add     rax, 32
+.L31:
+        vmovupd ymm1, YMMWORD PTR [rsi+rax]
+        vfmadd231pd     ymm0, ymm1, YMMWORD PTR [rdi+rax]
+        add     rax, 32
+.L30:
+        vmovupd ymm2, YMMWORD PTR [rsi+rax]
+        vfmadd231pd     ymm0, ymm2, YMMWORD PTR [rdi+rax]
+        add     rax, 32
+        cmp     rax, r8
+        je      .L44
+.L4:
+        vmovupd ymm8, YMMWORD PTR [rsi+rax]
+        vmovupd ymm9, YMMWORD PTR [rsi+32+rax]
+        vfmadd231pd     ymm0, ymm8, YMMWORD PTR [rdi+rax]
+        vmovupd ymm10, YMMWORD PTR [rsi+64+rax]
+        vmovupd ymm11, YMMWORD PTR [rsi+96+rax]
+        vmovupd ymm12, YMMWORD PTR [rsi+128+rax]
+        vmovupd ymm13, YMMWORD PTR [rsi+160+rax]
+        vfmadd231pd     ymm0, ymm9, YMMWORD PTR [rdi+32+rax]
+        vmovupd ymm14, YMMWORD PTR [rsi+192+rax]
+        vmovupd ymm15, YMMWORD PTR [rsi+224+rax]
+        vfmadd231pd     ymm0, ymm10, YMMWORD PTR [rdi+64+rax]
+        vfmadd231pd     ymm0, ymm11, YMMWORD PTR [rdi+96+rax]
+        vfmadd231pd     ymm0, ymm12, YMMWORD PTR [rdi+128+rax]
+        vfmadd231pd     ymm0, ymm13, YMMWORD PTR [rdi+160+rax]
+        vfmadd231pd     ymm0, ymm14, YMMWORD PTR [rdi+192+rax]
+        vfmadd231pd     ymm0, ymm15, YMMWORD PTR [rdi+224+rax]
+        add     rax, 256
+        cmp     rax, r8
+        jne     .L4
+.L44:
+        vmovapd xmm3, xmm0
+        vextractf64x2   xmm0, ymm0, 0x1
+        vaddpd  xmm4, xmm3, xmm0
+        mov     r9, rcx
+        and     r9, -2
+        and     ecx, 1
+        vmovsd  xmm2, xmm4, xmm4
+        vunpckhpd       xmm0, xmm4, xmm4
+        je      .L48
+        vzeroupper
+.L3:
+        sal     r9, 4
+        vmovupd xmm6, XMMWORD PTR [rdi+r9]
+        vunpcklpd       xmm7, xmm2, xmm0
+        vfmadd132pd     xmm6, xmm7, XMMWORD PTR [rsi+r9]
+        vmovsd  xmm2, xmm6, xmm6
+        vunpckhpd       xmm0, xmm6, xmm6
+        vaddsd  xmm0, xmm0, xmm2
+        ret
+.L48:
+        vzeroupper
+        vaddsd  xmm0, xmm0, xmm2
+        ret
+.L47:
+        vmovupd ymm3, YMMWORD PTR [rsi]
+        mov     eax, 32
+        vfmadd231pd     ymm0, ymm3, YMMWORD PTR [rdi]
+        jmp     .L35
+.L6:
+        vxorpd  xmm0, xmm0, xmm0
+        ret
+.L7:
+        vxorpd  xmm0, xmm0, xmm0
+        xor     r9d, r9d
+        vmovsd  xmm2, xmm0, xmm0
+        jmp     .L3
+```
+
+# Code déroulé deux fois : 
+# Compilateur x86-64 Clang 11.0.0 :
 ```
 double dotprod_unroll2(double *restrict a, double *restrict b, unsigned long long n)
 {
