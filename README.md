@@ -888,7 +888,6 @@ dotprod_unroll2:
         jmp     .L3
 ```
 
-# Code déroulé deux fois : 
 # Compilateur x86-64 Clang 11.0.0 :
 ```
 double dotprod_unroll2(double *restrict a, double *restrict b, unsigned long long n)
