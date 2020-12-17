@@ -1,3 +1,36 @@
+# Compte rendu 
+
+Dans ce compte rendu je vais analyser trois compilateurs `X86-64 gcc 10.2` , `x86-64 Clang 11.0.0` et `x86-64 icc 19.0.1` avec les options suivantes : 
+
+`-O1:`
+Optimiser. L'optimisation de la compilation prend un peu plus de temps et beaucoup plus de mémoire pour une fonction volumineuse.
+Avec -O, le compilateur essaie de réduire la taille du code et le temps d'exécution, sans effectuer aucune optimisation qui prend beaucoup de temps de compilation.
+
+`-O2:`
+Optimisez encore plus. GCC effectue presque toutes les optimisations prises en charge qui n'impliquent pas de compromis entre la vitesse spatiale. Par rapport à `-O`, cette option augmente à la fois le temps de compilation et les performances du code généré.
+
+`-O3:`
+Optimisez encore plus.
+
+`-Ofast:`
+Ne tenez pas compte du respect des normes strictes. `-Rapide` active tout `-O3optimisations`. Il permet également des optimisations qui ne sont pas valides pour tous les programmes conformes à la norme. Il s'allume-ffast-math, `-dossier-magasin-data-courses` et le spécifique Fortran `-fstack-tableaux`, sauf si `-fmax-stack-var-size` est spécifié, et `-fno-protect-parens`.
+
+Version kamikaze: `-march=native -mtune=native -Ofast -funroll-loops -finline-functions -ftree-vectorize:`
+
+
+`-march=native :` active tous les sous-ensembles d'instructions pris en charge par la machine locale (par conséquent, le résultat peut ne pas s'exécuter sur des machines différentes)
+
+`-mtune = native :`  produit du code optimisé pour la machine locale sous les contraintes du jeu d'instructions sélectionné.
+
+`-funroll-loops :`  Déroulez les boucles dont le nombre d'itérations peut être déterminé au moment de la compilation ou lors de l'entrée dans la boucle. -funroll-boucles implique -frerun-cse-after-loop, `-fweb` et registres-noms-de-noms. Il active également le pelage complet de la boucle (c'est-à-dire la suppression complète des boucles avec un petit nombre constant d'itérations). Cette option agrandit le code et peut ou non le rendre plus rapide.
+Activé par `-fprofile-use` et `-fauto-profil`.
+
+`-finline-functions :` Considérez toutes les fonctions pour l'inlining, même si elles ne sont pas déclarées inline. Le compilateur décide de manière heuristique quelles fonctions méritent d'être intégrées de cette manière. Si tous les appels à une fonction donnée sont intégrés et que la fonction est déclarée static, la fonction n'est normalement pas sortie en tant que code assembleur à part entière.
+Activé aux niveaux `-O2`, `-O3`, `-Os`. Également activé `par-fprofile-use` et `-fauto-profil`.
+
+`-ftree-vectorize :` Effectuer la vectorisation sur les arbres. Cet indicateur permet `-ftree-loop-vectorize` et `-ftree-slp-vectorize` s'il n'est pas spécifié explicitement.
+
+
 # Compilateur X86-64 gcc 10.2
 
 Premier Code : 
@@ -12,7 +45,7 @@ return d;
 }
 ```
 
-  sans flag
+Sans flag
 ```
 dotprod:
         push    rbp
