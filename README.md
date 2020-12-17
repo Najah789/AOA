@@ -126,10 +126,9 @@ dotprod:
         ret
 ```
 Comparaison entre -O1 et -O2 : 
-On remarque que  mov     eax, 0 dans -O1 a été remplacer par xor     eax dans -O2 au lieu de copier 0 pour initialiser le registre à intialiser dans -O1 on exécute un XOR (ou exclusif sur le regitre, et on remarque aussi que le cache L1 n'est plus utilisé. 
+On remarque que  mov     eax, 0 dans -O1 a été remplacer par xor     eax dans -O2 au lieu de copier 0 pour initialiser le registre à intialiser dans -O1 on exécute un XOR (ou exclusif sur le regitre, et on remarque aussi que le cache L1 n'est plus utilisé.
 On remarque aussi que les instructions les plus utiliser sont des instructions scalaires dans les deux options.
 
-blablaPD ou blablaPS donc c'est une instruction vectorielle et si c'est blablaSS ou blablaSD donc c'est scalaires
 
 -O3 :  
 ```
@@ -216,6 +215,12 @@ dotprod:
         pxor    xmm1, xmm1
         jmp     .L3
 ```
+Comparaison : 
+Le code assembleur de -O3 et -Ofast sont très similaire, On remarque l'utilisation de plusieurs cache en comparaison avec l'option -O1 et -O2.
+On remarque pour -O3 une mutiplication vectorielle et addition scalaire; et pour -Ofast multiplication vectorial et addition vectorielle sur le cache L4 et L1 mais sur le cache L3 multiplication et addition scalaire.
+
+
+
 kamikaze:  
 fma fait la multiplication et l’addition au même temps optimise beaucoup ( scalaire )
 ```
