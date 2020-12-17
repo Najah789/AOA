@@ -1,4 +1,4 @@
-# AOA
+# Compilateur X86-64 gcc 10.2
 
 Premier Code : 
 
@@ -12,7 +12,7 @@ return d;
 }
 ```
 
-X86-64 gcc 10.2 :  sans flag
+  sans flag
 ```
 dotprod:
         push    rbp
@@ -630,7 +630,9 @@ dotprod_unroll2:
         vmovsd  xmm2, xmm0, xmm0
         jmp     .L3
 ```
-Compilateur Clang : 
+
+# Compilateur x86-64 Clang 11.0.0
+
 Premier Code : 
 -O1 :
 ```
