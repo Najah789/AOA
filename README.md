@@ -125,6 +125,12 @@ dotprod:
         movapd  xmm0, xmm1
         ret
 ```
+Comparaison entre -O1 et -O2 : 
+On remarque que  mov     eax, 0 dans -O1 a été remplacer par xor     eax dans -O2 au lieu de copier 0 pour initialiser le registre à intialiser dans -O1 on exécute un XOR (ou exclusif sur le regitre, et on remarque aussi que le cache L1 n'est plus utilisé. 
+On remarque aussi que les instructions les plus utiliser sont des instructions scalaires dans les deux options.
+
+blablaPD ou blablaPS donc c'est une instruction vectorielle et si c'est blablaSS ou blablaSD donc c'est scalaires
+
 -O3 :  
 ```
 dotprod:
