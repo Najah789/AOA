@@ -300,7 +300,7 @@ dotprod:
         vxorpd  xmm0, xmm0, xmm0
         jmp     .L3
 ```
-Comparaison : 
+Remarques : 
 On remarque l'utilisation des registres vectorielles AVX (ymm0 et ymm2 .. ) qui s'utilise que dans des code purement vectorielle, mais on remarque de quelques instructions scalaires quand la vectorisation est impossible.
 On remarque aussi l'utilisation de VFMADD231SD ymm0, ymm2, YMMWORD PTR [rsi] qui Multiplie la valeur à virgule flottante double précision scalaire.
 
@@ -378,6 +378,7 @@ dotprod:                                # @dotprod
 .LBB0_7:
         ret
 ```
+
 -O3 :
 ```
 dotprod:                                # @dotprod
@@ -430,6 +431,10 @@ dotprod:                                # @dotprod
 .LBB0_7:
         ret
 ```
+Comparaison de -O1 et -O2 et -O3 : 
+
+On remarque que le code au niveau -O1 est beaucoup plus court que celui des niveaux -O2 et -O3 car Clang contrairement à GCC commence l'optimisation des vecteurs dès le niveau -O2 mais il utilise toujours des instructions ASM scalaire (movsd, mulsd, addsd).
+
 -Ofast :
 ```
 dotprod:                                # @dotprod
@@ -513,6 +518,7 @@ dotprod:                                # @dotprod
         jne     .LBB0_9
         jmp     .LBB0_10
 ```
+Au niveau -O4 : Le compilateur Clang vectorise le programme et remplace toutes les instruction scalaires avec des instructions vectorielles sauf dans les cas ou l'utilisation de la vectorisation est ( movupd, mulpd ).
 
 kamikaze:
 ```
@@ -604,13 +610,10 @@ dotprod:                                # @dotprod
         jne     .LBB0_9
         jmp     .LBB0_10
 ```
-
-
-
-
+Remarque : 
+On remarque l'utilisation des registres vectorielles AVX (ymm0 et ymm2 .. ) donc on conclue que Clang a procédé à la vectorisation définitive du programme, mais on remarque de quelques instructions scalaires quand la vectorisation est impossible.
 
 # Code déroulé 2 fois : 
-# Compilateur x86-64 Clang 11.0.0
 
 ```
 double dotprod_unroll2(double *restrict a, double *restrict b, unsigned long long n)
@@ -625,6 +628,8 @@ d2 += (a[i + 1] * b[i + 1]);
 return (d1 + d2);
 }
 ```
+
+# Compilateur x86-64 Clang 11.0.0
 -O1 : 
 ```
 dotprod_unroll2:
@@ -1011,3 +1016,21 @@ dotprod_unroll2:                        # @dotprod_unroll2
         ret
 ```
 
+
+
+# Comparaison des performances de compilation GCC VS Clang 
+
+Le processus de compilation GCC suit le processus suivant: lire le fichier source, prétraiter le fichier source, le convertir en IR, optimiser et générer un fichier d'assemblage. Ensuite, l'assembleur génère un fichier objet. 
+
+Clang et LLVM ne s'appuient pas sur des compilateurs indépendants, mais intègrent des compilateurs auto-implémentés en backend. Le processus de génération de fichiers d'assemblage est omis dans le processus de génération de fichiers objet. Le fichier objet est généré directement à partir de l'IR. En outre, par rapport au GCC IR, la structure des données de LLVM IR est plus concise. Il occupe moins de mémoire lors de la compilation et prend en charge une traversée plus rapide. 
+
+Par conséquent, Clang et LLVM sont avantageux en termes de temps de compilation. Clang réduit le temps de compilation mono-thread de 5% à 10% par rapport à GCC.
+
+
+# Comparaison des performances d'exécution GCC vs Clang 
+
+GCC a un avantage de performance de 1% à 4% par rapport à Clang et LLVM pour la plupart des programmes aux niveaux O2 et O3. Clang est plus avantageux que GCC dans l'optimisation des performances au niveau O2 car c'est à ce niveau que Clang optimise les vecteurs contrairement au GCC. Au niveau O3 et supérieur, GCC n'optimise pas trop les performances en comparaison avec celles au niveau O2, A l'exception des programmes vectorisés. En d'autres termes, les programmes ne sont pas sensibles à l'optimisation GCC O3. En revanche, Clang et LLVM améliorent considérablement les performances de certains programmes au niveau O3.
+
+
+# Conclusion entre GCC VS Clang 
+A partir de ce que j'ai cité avant, je conclure que GCC est toujours avantageux dans l'optimisation des performances.
