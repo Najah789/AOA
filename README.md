@@ -44,45 +44,6 @@ d += a[i] * b[i];
 return d;
 }
 ```
-
-Sans flag
-```
-dotprod:
-        push    rbp
-        mov     rbp, rsp
-        mov     QWORD PTR [rbp-24], rdi
-        mov     QWORD PTR [rbp-32], rsi
-        mov     QWORD PTR [rbp-40], rdx
-        pxor    xmm0, xmm0
-        movsd   QWORD PTR [rbp-8], xmm0
-        mov     QWORD PTR [rbp-16], 0
-        jmp     .L2
-.L3:
-        mov     rax, QWORD PTR [rbp-16]
-        lea     rdx, [0+rax*8]
-        mov     rax, QWORD PTR [rbp-24]
-        add     rax, rdx
-        movsd   xmm1, QWORD PTR [rax]
-        mov     rax, QWORD PTR [rbp-16]
-        lea     rdx, [0+rax*8]
-        mov     rax, QWORD PTR [rbp-32]
-        add     rax, rdx
-        movsd   xmm0, QWORD PTR [rax]
-        mulsd   xmm0, xmm1
-        movsd   xmm1, QWORD PTR [rbp-8]
-        addsd   xmm0, xmm1
-        movsd   QWORD PTR [rbp-8], xmm0
-        add     QWORD PTR [rbp-16], 1
-.L2:
-        mov     rax, QWORD PTR [rbp-16]
-        cmp     rax, QWORD PTR [rbp-40]
-        jb      .L3
-        movsd   xmm0, QWORD PTR [rbp-8]
-        movq    rax, xmm0
-        movq    xmm0, rax
-        pop     rbp
-        ret
-```
 -O1:
 ```
 dotprod:
@@ -216,9 +177,8 @@ dotprod:
         jmp     .L3
 ```
 Comparaison : 
-Le code assembleur de -O3 et -Ofast sont très similaire, On remarque l'utilisation de plusieurs cache en comparaison avec l'option -O1 et -O2.
+Le code assembleur de -O3 et -Ofast sont très similaire mais très différent de -O1 et -O2, on remarque l'utilisation de plusieurs cache en comparaison avec l'option -O1 et -O2.
 On remarque pour -O3 une mutiplication vectorielle et addition scalaire; et pour -Ofast multiplication vectorial et addition vectorielle sur le cache L4 et L1 mais sur le cache L3 multiplication et addition scalaire.
-
 
 
 kamikaze:  
@@ -340,6 +300,9 @@ dotprod:
         vxorpd  xmm0, xmm0, xmm0
         jmp     .L3
 ```
+Comparaison : 
+On remarque l'utilisation des registres vectorielles AVX (ymm0 et ymm2 .. ) qui s'utilise que dans des code purement vectorielle, mais on remarque de quelques instructions scalaires quand la vectorisation est impossible.
+On remarque aussi l'utilisation de VFMADD231SD ymm0, ymm2, YMMWORD PTR [rsi] qui Multiplie la valeur à virgule flottante double précision scalaire.
 
 Deuxième Code : 
 ```
@@ -354,63 +317,6 @@ d2 += (a[i + 1] * b[i + 1]);
 }
 return (d1 + d2);
 }
-```
-Sans flag : 
-```
-dotprod_unroll2:
-        push    rbp
-        mov     rbp, rsp
-        mov     QWORD PTR [rbp-40], rdi
-        mov     QWORD PTR [rbp-48], rsi
-        mov     QWORD PTR [rbp-56], rdx
-        pxor    xmm0, xmm0
-        movsd   QWORD PTR [rbp-8], xmm0
-        pxor    xmm0, xmm0
-        movsd   QWORD PTR [rbp-16], xmm0
-        mov     QWORD PTR [rbp-24], 0
-        jmp     .L2
-.L3:
-        mov     rax, QWORD PTR [rbp-24]
-        lea     rdx, [0+rax*8]
-        mov     rax, QWORD PTR [rbp-40]
-        add     rax, rdx
-        movsd   xmm1, QWORD PTR [rax]
-        mov     rax, QWORD PTR [rbp-24]
-        lea     rdx, [0+rax*8]
-        mov     rax, QWORD PTR [rbp-48]
-        add     rax, rdx
-        movsd   xmm0, QWORD PTR [rax]
-        mulsd   xmm0, xmm1
-        movsd   xmm1, QWORD PTR [rbp-8]
-        addsd   xmm0, xmm1
-        movsd   QWORD PTR [rbp-8], xmm0
-        mov     rax, QWORD PTR [rbp-24]
-        add     rax, 1
-        lea     rdx, [0+rax*8]
-        mov     rax, QWORD PTR [rbp-40]
-        add     rax, rdx
-        movsd   xmm1, QWORD PTR [rax]
-        mov     rax, QWORD PTR [rbp-24]
-        add     rax, 1
-        lea     rdx, [0+rax*8]
-        mov     rax, QWORD PTR [rbp-48]
-        add     rax, rdx
-        movsd   xmm0, QWORD PTR [rax]
-        mulsd   xmm0, xmm1
-        movsd   xmm1, QWORD PTR [rbp-16]
-        addsd   xmm0, xmm1
-        movsd   QWORD PTR [rbp-16], xmm0
-        add     QWORD PTR [rbp-24], 2
-.L2:
-        mov     rax, QWORD PTR [rbp-24]
-        cmp     rax, QWORD PTR [rbp-56]
-        jb      .L3
-        movsd   xmm0, QWORD PTR [rbp-8]
-        addsd   xmm0, QWORD PTR [rbp-16]
-        movq    rax, xmm0
-        movq    xmm0, rax
-        pop     rbp
-        ret
 ```
 -O1 : 
 ```
