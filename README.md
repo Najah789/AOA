@@ -2,6 +2,7 @@
 
 Premier Code : 
 
+```
 double dotprod(double *restrict a, double *restrict b, unsigned long long n)
 {
 double d = 0.0;
@@ -9,8 +10,10 @@ for (unsigned long long i = 0; i < n; i++)
 d += a[i] * b[i];
 return d;
 }
+```
 
 X86-64 gcc 10.2 :  sans flag
+```
 dotprod:
         push    rbp
         mov     rbp, rsp
@@ -46,8 +49,9 @@ dotprod:
         movq    xmm0, rax
         pop     rbp
         ret
-
+```
 -O1:
+```
 dotprod:
         test    rdx, rdx
         je      .L4
@@ -66,8 +70,9 @@ dotprod:
 .L4:
         pxor    xmm1, xmm1
         jmp     .L1
-
+```
 -O2 :  est plus sensible au scheduling organisation des instructions
+```
 dotprod:
         test    rdx, rdx
         je      .L4
@@ -86,8 +91,9 @@ dotprod:
         pxor    xmm1, xmm1
         movapd  xmm0, xmm1
         ret
-
+```
 -O3 :  
+```
 dotprod:
         test    rdx, rdx
         je      .L7
@@ -127,8 +133,9 @@ dotprod:
         xor     eax, eax
         pxor    xmm1, xmm1
         jmp     .L3
-
+```
 -Ofast : 
+```
 dotprod:
         test    rdx, rdx
         je      .L7
@@ -169,9 +176,10 @@ dotprod:
         xor     eax, eax
         pxor    xmm1, xmm1
         jmp     .L3
-
+```
 kamikaze:  
 fma fait la multiplication et l’addition au même temps optimise beaucoup ( scalaire )
+```
 dotprod:
         mov     rcx, rdx
         test    rdx, rdx
@@ -287,9 +295,10 @@ dotprod:
         xor     r10d, r10d
         vxorpd  xmm0, xmm0, xmm0
         jmp     .L3
-
+```
 
 Deuxième Code : 
+```
 double dotprod_unroll2(double *restrict a, double *restrict b, unsigned long long n)
 {
 double d1 = 0.0;
@@ -301,8 +310,9 @@ d2 += (a[i + 1] * b[i + 1]);
 }
 return (d1 + d2);
 }
-
+```
 Sans flag : 
+```
 dotprod_unroll2:
         push    rbp
         mov     rbp, rsp
@@ -357,8 +367,9 @@ dotprod_unroll2:
         movq    xmm0, rax
         pop     rbp
         ret
-
+```
 -O1 : 
+```
 dotprod_unroll2:
         test    rdx, rdx
         je      .L4
@@ -383,8 +394,9 @@ dotprod_unroll2:
         pxor    xmm2, xmm2
         movapd  xmm1, xmm2
         jmp     .L2
-
+```
 -O2 : 
+```
 dotprod_unroll2:
         test    rdx, rdx
         je      .L4
@@ -407,8 +419,9 @@ dotprod_unroll2:
 .L4:
         pxor    xmm0, xmm0
         ret
-
+```
 -O3 :
+```
 dotprod_unroll2:
         test    rdx, rdx
         je      .L6
@@ -470,8 +483,9 @@ dotprod_unroll2:
         xor     eax, eax
         movapd  xmm3, xmm1
         jmp     .L3
-
+```
 -Ofast :
+```
 dotprod_unroll2:
         test    rdx, rdx
         je      .L4
@@ -498,8 +512,9 @@ dotprod_unroll2:
 .L4:
         pxor    xmm0, xmm0
         ret
-
+```
 kamikaze:
+```
 dotprod_unroll2:
         test    rdx, rdx
         je      .L6
@@ -614,10 +629,11 @@ dotprod_unroll2:
         xor     r9d, r9d
         vmovsd  xmm2, xmm0, xmm0
         jmp     .L3
-
+```
 Compilateur Clang : 
 Premier Code : 
--O1 : 
+-O1 :
+```
 dotprod:                                # @dotprod
         xorpd   xmm0, xmm0
         test    rdx, rdx
@@ -632,9 +648,10 @@ dotprod:                                # @dotprod
         jne     .LBB0_2
 .LBB0_3:
         ret
-
+```
 
 -O2 : 
+```
 dotprod:                                # @dotprod
         test    rdx, rdx
         je      .LBB0_1
@@ -684,8 +701,9 @@ dotprod:                                # @dotprod
         jne     .LBB0_6
 .LBB0_7:
         ret
-
+```
 -O3 :
+```
 dotprod:                                # @dotprod
         test    rdx, rdx
         je      .LBB0_1
@@ -735,8 +753,9 @@ dotprod:                                # @dotprod
         jne     .LBB0_6
 .LBB0_7:
         ret
-
+```
 -Ofast :
+```
 dotprod:                                # @dotprod
         test    rdx, rdx
         je      .LBB0_1
@@ -817,8 +836,10 @@ dotprod:                                # @dotprod
         test    r8b, 1
         jne     .LBB0_9
         jmp     .LBB0_10
+```
 
 kamikaze:
+```
 dotprod:                                # @dotprod
         test    rdx, rdx
         je      .LBB0_1
@@ -906,8 +927,9 @@ dotprod:                                # @dotprod
         test    r8b, 1
         jne     .LBB0_9
         jmp     .LBB0_10
-
+```
 Deuxième Code : 
+```
 double dotprod_unroll2(double *restrict a, double *restrict b, unsigned long long n)
 {
 double d1 = 0.0;
@@ -919,8 +941,9 @@ d2 += (a[i + 1] * b[i + 1]);
 }
 return (d1 + d2);
 }
-
+```
 -O1 : 
+```
 dotprod_unroll2:                        # @dotprod_unroll2
         test    rdx, rdx
         je      .LBB0_1
@@ -944,9 +967,10 @@ dotprod_unroll2:                        # @dotprod_unroll2
         xorpd   xmm1, xmm1
         addsd   xmm0, xmm1
         ret
-
+```
 
 -O2 : 
+```
 dotprod_unroll2:                        # @dotprod_unroll2
         xorpd   xmm1, xmm1
         test    rdx, rdx
@@ -965,8 +989,9 @@ dotprod_unroll2:                        # @dotprod_unroll2
         unpckhpd        xmm0, xmm1                      # xmm0 = xmm0[1],xmm1[1]
         addsd   xmm0, xmm1
         ret
-
+```
 -O3 :
+```
 dotprod_unroll2:                        # @dotprod_unroll2
         xorpd   xmm1, xmm1
         test    rdx, rdx
@@ -985,8 +1010,9 @@ dotprod_unroll2:                        # @dotprod_unroll2
         unpckhpd        xmm0, xmm1                      # xmm0 = xmm0[1],xmm1[1]
         addsd   xmm0, xmm1
         ret
-
+```
 -Ofast :
+```
 dotprod_unroll2:                        # @dotprod_unroll2
         xorpd   xmm1, xmm1
         test    rdx, rdx
@@ -1005,9 +1031,9 @@ dotprod_unroll2:                        # @dotprod_unroll2
         unpckhpd        xmm0, xmm1                      # xmm0 = xmm0[1],xmm1[1]
         addsd   xmm0, xmm1
         ret
-
+```
 kamikaze:
-
+```
 dotprod_unroll2:                        # @dotprod_unroll2
         vxorpd  xmm0, xmm0, xmm0
         test    rdx, rdx
@@ -1023,5 +1049,5 @@ dotprod_unroll2:                        # @dotprod_unroll2
         vpermilpd       xmm1, xmm0, 1           # xmm1 = xmm0[1,0]
         vaddsd  xmm0, xmm1, xmm0
         ret
-
+```
 
