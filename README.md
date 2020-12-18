@@ -1064,7 +1064,7 @@ Par conséquent, Clang et LLVM sont avantageux en termes de temps de compilation
 
 # Comparaison des performances d'exécution GCC vs Clang 
 
-GCC a un avantage de performance de 1% à 4% par rapport à Clang et LLVM pour la plupart des programmes aux niveaux `O2` et `O3`. Clang est plus avantageux que GCC dans l'optimisation des performances au niveau `O2` car c'est à ce niveau que Clang optimise les vecteurs contrairement au GCC. Au niveau `O3` et supérieur, GCC n'optimise pas trop les performances en comparaison avec celles au niveau `O2`, A l'exception des programmes vectorisés. En d'autres termes, les programmes ne sont pas sensibles à l'optimisation GCC `O3`. En revanche, Clang et LLVM améliorent considérablement les performances de certains programmes au niveau `O3`.
+GCC a un avantage de performance de 1% à 4% par rapport à Clang et LLVM pour la plupart des programmes aux niveaux `O2` et `O3`. Clang est plus avantageux que GCC dans l'optimisation des performances au niveau `O2` car c'est à ce niveau que Clang optimise les vecteurs contrairement au GCC. Au niveau `O3` et supérieur, GCC n'optimise pas trop les performances en comparaison avec le niveau `O2`, A l'exception des programmes vectorisés. En d'autres termes, les programmes ne sont pas sensibles à l'optimisation GCC `O3`. En revanche, Clang et LLVM améliorent considérablement les performances de certains programmes au niveau `O3`.
 
 
 # Conclusion entre GCC VS Clang 
