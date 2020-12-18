@@ -30,6 +30,8 @@ Activé aux niveaux `-O2`, `-O3`, `-Os`. Également activé `par-fprofile-use` e
 
 `-ftree-vectorize :` Effectuer la vectorisation sur les arbres. Cet indicateur permet `-ftree-loop-vectorize` et `-ftree-slp-vectorize` s'il n'est pas spécifié explicitement.
 
+`fma :` fait la multiplication et l’addition au même temps optimise beaucoup ( scalaire )
+
 
 # Code non déroulé :
 
@@ -44,7 +46,7 @@ return d;
 ```
 # Compilateur X86-64 gcc 10.2
 
--O1:
+Niveau `-O1`:
 ```
 dotprod:
         test    rdx, rdx
@@ -65,7 +67,8 @@ dotprod:
         pxor    xmm1, xmm1
         jmp     .L1
 ```
--O2 :  est plus sensible au scheduling organisation des instructions
+
+Niveau `-O2` :  est plus sensible au scheduling organisation des instructions
 ```
 dotprod:
         test    rdx, rdx
@@ -86,13 +89,12 @@ dotprod:
         movapd  xmm0, xmm1
         ret
 ```
-Comparaison entre -O1 et -O2 : 
 
-On remarque que  mov     eax, 0 dans -O1 a été remplacer par xor     eax, eax dans -O2 au lieu de copier 0 pour initialiser le registre à intialiser dans -O1 on exécute un XOR (ou exclusif sur le regitre, et on remarque aussi que le cache L1 n'est plus utilisé.
-On remarque aussi que les instructions les plus utiliser sont des instructions scalaires dans les deux options.
+Comparaison entre `-O1` et `-O2` : ( Addition et Multiplication scalaire )
 
+On remarque que  `mov     eax, 0` dans `-O1` a été remplacer par `xor     eax, eax` dans `-O2` au lieu de copier 0 pour initialiser le registre à intialiser dans `-O1` on exécute un `XOR` (ou exclusif sur le regitre, et on remarque aussi que le cache L1 n'est plus utilisé.
 
--O3 :  
+Niveau `-O3` :  
 ```
 dotprod:
         test    rdx, rdx
@@ -134,7 +136,8 @@ dotprod:
         pxor    xmm1, xmm1
         jmp     .L3
 ```
--Ofast : 
+
+Niveau `-Ofast` : 
 ```
 dotprod:
         test    rdx, rdx
@@ -179,12 +182,9 @@ dotprod:
 ```
 Comparaison : 
 
-Le code assembleur de -O3 et -Ofast sont très similaire mais très différent de -O1 et -O2, on remarque l'utilisation de plusieurs cache en comparaison avec l'option -O1 et -O2.
-On remarque pour -O3 une mutiplication vectorielle et addition scalaire; et pour -Ofast multiplication vectorial et addition vectorielle sur le cache L4 et L1 mais sur le cache L3 multiplication et addition scalaire.
+Le code assembleur de `-O3` et `-Ofast` sont très similaire mais très différent de -O1 et -O2, on remarque l'utilisation de plusieurs cache en comparaison avec l'option `-O1` et `-O2`.
 
-
-kamikaze:  
-fma fait la multiplication et l’addition au même temps optimise beaucoup ( scalaire )
+Niveau `kamikaze`:  
 ```
 dotprod:
         mov     rcx, rdx
@@ -304,13 +304,18 @@ dotprod:
 ```
 Remarques : 
 
-On remarque l'utilisation des registres vectorielles AVX (ymm0 et ymm2 .. ) qui s'utilise que dans des code purement vectorielle, mais on remarque de quelques instructions scalaires quand la vectorisation est impossible.
-On remarque aussi l'utilisation de VFMADD231SD ymm0, ymm2, YMMWORD PTR [rsi] qui Multiplie la valeur à virgule flottante double précision scalaire.
+Au niveau `-O1` et `-O2` : Le compilateur au niveau `-O2` et inférieur il utilise que des instructions scalaires.
 
+Au niveau `-O3`: Le compilateur GCC utilise l'addition scalaire et la mutliplication vectorielle.
+
+Au niveau `-Ofast` : GCC utilise l'addition et la mutiplication vectorielle.
+
+Avec les flags de kamikaze (utilisation des registres vectorielles et de fma et addition vectorielle ): On remarque l'utilisation des registres vectorielles AVX (ymm0 et ymm2 .. ) qui s'utilise que dans des code purement vectorielle, mais on remarque de quelques instructions scalaires quand la vectorisation est impossible.
+On remarque aussi l'utilisation de VFMADD231SD ymm0, ymm2, YMMWORD PTR [rsi] qui Multiplie la valeur à virgule flottante double précision scalaire.
 
 # Compilateur x86-64 Clang 11.0.0
 
--O1 :
+Niveau `-O1` :
 ```
 dotprod:                                # @dotprod
         xorpd   xmm0, xmm0
@@ -328,7 +333,7 @@ dotprod:                                # @dotprod
         ret
 ```
 
--O2 : 
+Niveau `-O2` : 
 ```
 dotprod:                                # @dotprod
         test    rdx, rdx
@@ -381,7 +386,7 @@ dotprod:                                # @dotprod
         ret
 ```
 
--O3 :
+Niveau `-O3` :
 ```
 dotprod:                                # @dotprod
         test    rdx, rdx
@@ -433,11 +438,8 @@ dotprod:                                # @dotprod
 .LBB0_7:
         ret
 ```
-Comparaison de -O1 et -O2 et -O3 : 
 
-On remarque que le code au niveau -O1 est beaucoup plus court que celui des niveaux -O2 et -O3 car Clang contrairement à GCC commence l'optimisation des vecteurs dès le niveau -O2 mais il utilise toujours des instructions ASM scalaire (movsd, mulsd, addsd).
-
--Ofast :
+Niveau `-Ofast` :
 ```
 dotprod:                                # @dotprod
         test    rdx, rdx
@@ -520,11 +522,8 @@ dotprod:                                # @dotprod
         jne     .LBB0_9
         jmp     .LBB0_10
 ```
-Au niveau -O4 :
 
-Le compilateur Clang vectorise le programme et remplace toutes les instruction scalaires avec des instructions vectorielles sauf dans les cas ou l'utilisation de la vectorisation est ( movupd, mulpd ).
-
-kamikaze:
+Niveau `kamikaze`:
 ```
 dotprod:                                # @dotprod
         test    rdx, rdx
@@ -614,9 +613,14 @@ dotprod:                                # @dotprod
         jne     .LBB0_9
         jmp     .LBB0_10
 ```
+
 Remarques : 
 
-On remarque l'utilisation des registres vectorielles AVX (ymm0 et ymm2 .. ) donc on conclue que Clang a procédé à la vectorisation définitive du programme, mais on remarque de quelques instructions scalaires quand la vectorisation est impossible.
+Au niveau `-O3` et inférieur ( Instructions scalaires ) : On remarque que le code au niveau `-O1` est beaucoup plus court que celui des niveaux `-O2` et `-O3` car Clang contrairement à GCC commence l'optimisation des vecteurs dès le niveau `-O2` mais il utilise toujours des instructions ASM scalaire (movsd, mulsd, addsd).
+
+Au niveau `-Ofast` : GCC utilise l'addition et la mutiplication vectorielle. Le compilateur Clang commence la  vectorisation du programme et remplace toutes les instructions scalaires avec des instructions vectorielles ( `movupd`, `mulpd` ) sauf dans les cas ou l'utilisation de la vectorisation est impossible .
+
+Avec les flags de `kamikaze `(utilisation des registres vectorielles et de fma et addition vectorielle ): On remarque l'utilisation des registres vectorielles AVX (ymm0 et ymm2 .. ) donc on conclue que Clang a procédé à la vectorisation définitive du programme, mais on remarque de quelques instructions scalaires quand la vectorisation est impossible. 
 
 # Code déroulé 2 fois : 
 
@@ -635,7 +639,8 @@ return (d1 + d2);
 ```
 
 # Compilateur x86-64 Clang 11.0.0
--O1 : 
+
+Niveau `-O1` : 
 ```
 dotprod_unroll2:
         test    rdx, rdx
@@ -662,7 +667,8 @@ dotprod_unroll2:
         movapd  xmm1, xmm2
         jmp     .L2
 ```
--O2 : 
+
+Niveau `-O2` : 
 ```
 dotprod_unroll2:
         test    rdx, rdx
@@ -688,7 +694,7 @@ dotprod_unroll2:
         ret
 ```
 
--O3 :
+Niveau `-O3` :
 ```
 dotprod_unroll2:
         test    rdx, rdx
@@ -752,7 +758,8 @@ dotprod_unroll2:
         movapd  xmm3, xmm1
         jmp     .L3
 ```
--Ofast :
+
+Niveau `-Ofast` :
 ```
 dotprod_unroll2:
         test    rdx, rdx
@@ -781,7 +788,8 @@ dotprod_unroll2:
         pxor    xmm0, xmm0
         ret
 ```
-kamikaze:
+
+Niveau `kamikaze`:
 ```
 dotprod_unroll2:
         test    rdx, rdx
@@ -901,11 +909,11 @@ dotprod_unroll2:
 
 Remarques : 
 
-Au niveau -O1 et -O2 (Addition et multiplication scalaire): Le compilateur au niveau -O2 et inférieur il utilise que des instructions scalaires.
+Au niveau `-O1` et `-O2` (Addition et multiplication scalaire): Le compilateur au niveau `-O2` et inférieur il utilise que des instructions scalaires.
 
-Au niveau -O3 (Addition scalaire et multiplication vectorielle): Le compilateur GCC utilise l'addition scalaire et la mutliplication vectorielle.
+Au niveau `-O3` (Addition scalaire et multiplication vectorielle): Le compilateur GCC utilise l'addition scalaire et la mutliplication vectorielle.
 
-Au niceau -Ofast : GCC utilise l'addition et la mutiplication vectorielle.
+Au niveau `-Ofast` : GCC utilise l'addition et la mutiplication vectorielle.
 
 Avec les flags de kamikaze (utilisation des registres vectorielles et de fma et addition/multiplication vectorielle ): GCC utilise des registres vectorielles AVX (ymm0 et ymm2 .. ) donc il a procédé à la vectorisation définitive du programme, mais utilise quelques instructions scalaires quand la vectorisation est impossible. Le code est plus long que les codes des autres niveaux.
 
@@ -924,7 +932,8 @@ d2 += (a[i + 1] * b[i + 1]);
 return (d1 + d2);
 }
 ```
--O1 : 
+
+Niveau `-O1` : 
 ```
 dotprod_unroll2:                        # @dotprod_unroll2
         test    rdx, rdx
@@ -951,7 +960,7 @@ dotprod_unroll2:                        # @dotprod_unroll2
         ret
 ```
 
--O2 : 
+Niveau `-O2` : 
 ```
 dotprod_unroll2:                        # @dotprod_unroll2
         xorpd   xmm1, xmm1
@@ -973,7 +982,7 @@ dotprod_unroll2:                        # @dotprod_unroll2
         ret
 ```
 
--O3 :
+Niveau `-O3` :
 ```
 dotprod_unroll2:                        # @dotprod_unroll2
         xorpd   xmm1, xmm1
@@ -995,7 +1004,7 @@ dotprod_unroll2:                        # @dotprod_unroll2
         ret
 ```
 
--Ofast :
+Niveau `-Ofast` :
 ```
 dotprod_unroll2:                        # @dotprod_unroll2
         xorpd   xmm1, xmm1
@@ -1017,7 +1026,7 @@ dotprod_unroll2:                        # @dotprod_unroll2
         ret
 ```
 
-kamikaze:
+Niveau `kamikaze`:
 ```
 dotprod_unroll2:                        # @dotprod_unroll2
         vxorpd  xmm0, xmm0, xmm0
@@ -1037,9 +1046,9 @@ dotprod_unroll2:                        # @dotprod_unroll2
 ```
 Remarques : 
 
-Au niveau -O1 (Addition et multiplication scalaire) : Le compilateur Clang utilise au niveau -O2 et inférieur que des instructions scalaires, le code est long en comparaison au niveau -O2.
+Au niveau `-O1` (Addition et multiplication scalaire) : Le compilateur Clang utilise au niveau `-O2` et inférieur que des instructions scalaires, le code est long en comparaison au niveau `-O2`.
 
-Au niveau -O2 et -O3 et -Ofast ( Addition scalaire et multiplication vectorielle ) : Aucun différence entre les 3 niveaux -O2/-O3/-Ofast. Le compilateur Clang et commence l'optimisation des vecteures et la vectorisation de la multiplication ce qui minimise le nombre de ligne de code en comparaison avec le niveau -O1 et le niveau -O2 dans le code sans déroulement.
+Au niveau `-O2` et `-O3` et `-Ofast` ( Addition scalaire et multiplication vectorielle ) : Aucun différence entre les 3 niveaux `-O2/-O3/-Ofast`. Le compilateur Clang et commence l'optimisation des vecteures et la vectorisation de la multiplication ce qui minimise le nombre de ligne de code en comparaison avec le niveau `-O1` et le niveau `-O2` dans le code sans déroulement.
 
 Avec les flags de kamikaze (utilisation des registres vectorielles et de fma et addition/multiplication vectorielle ): fma c'est une addition et multiplication vectorielle très optimisé. Clang utilise des registres vectorielles AVX (ymm0 et ymm2 .. ) donc il a procédé à la vectorisation définitive du programme, mais utilise quelques instructions scalaires quand la vectorisation est impossible et les lignes de code sont plus court.
 
@@ -1055,7 +1064,7 @@ Par conséquent, Clang et LLVM sont avantageux en termes de temps de compilation
 
 # Comparaison des performances d'exécution GCC vs Clang 
 
-GCC a un avantage de performance de 1% à 4% par rapport à Clang et LLVM pour la plupart des programmes aux niveaux O2 et O3. Clang est plus avantageux que GCC dans l'optimisation des performances au niveau O2 car c'est à ce niveau que Clang optimise les vecteurs contrairement au GCC. Au niveau O3 et supérieur, GCC n'optimise pas trop les performances en comparaison avec celles au niveau O2, A l'exception des programmes vectorisés. En d'autres termes, les programmes ne sont pas sensibles à l'optimisation GCC O3. En revanche, Clang et LLVM améliorent considérablement les performances de certains programmes au niveau O3.
+GCC a un avantage de performance de 1% à 4% par rapport à Clang et LLVM pour la plupart des programmes aux niveaux `O2` et `O3`. Clang est plus avantageux que GCC dans l'optimisation des performances au niveau `O2` car c'est à ce niveau que Clang optimise les vecteurs contrairement au GCC. Au niveau `O3` et supérieur, GCC n'optimise pas trop les performances en comparaison avec celles au niveau `O2`, A l'exception des programmes vectorisés. En d'autres termes, les programmes ne sont pas sensibles à l'optimisation GCC `O3`. En revanche, Clang et LLVM améliorent considérablement les performances de certains programmes au niveau `O3`.
 
 
 # Conclusion entre GCC VS Clang 
