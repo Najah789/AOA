@@ -32,8 +32,6 @@ Activé aux niveaux `-O2`, `-O3`, `-Os`. Également activé `par-fprofile-use` e
 
 
 # Code non déroulé :
-# Compilateur X86-64 gcc 10.2
-
 
 ```
 double dotprod(double *restrict a, double *restrict b, unsigned long long n)
@@ -44,6 +42,8 @@ d += a[i] * b[i];
 return d;
 }
 ```
+# Compilateur X86-64 gcc 10.2
+
 -O1:
 ```
 dotprod:
@@ -87,6 +87,7 @@ dotprod:
         ret
 ```
 Comparaison entre -O1 et -O2 : 
+
 On remarque que  mov     eax, 0 dans -O1 a été remplacer par xor     eax, eax dans -O2 au lieu de copier 0 pour initialiser le registre à intialiser dans -O1 on exécute un XOR (ou exclusif sur le regitre, et on remarque aussi que le cache L1 n'est plus utilisé.
 On remarque aussi que les instructions les plus utiliser sont des instructions scalaires dans les deux options.
 
@@ -177,6 +178,7 @@ dotprod:
         jmp     .L3
 ```
 Comparaison : 
+
 Le code assembleur de -O3 et -Ofast sont très similaire mais très différent de -O1 et -O2, on remarque l'utilisation de plusieurs cache en comparaison avec l'option -O1 et -O2.
 On remarque pour -O3 une mutiplication vectorielle et addition scalaire; et pour -Ofast multiplication vectorial et addition vectorielle sur le cache L4 et L1 mais sur le cache L3 multiplication et addition scalaire.
 
@@ -301,13 +303,13 @@ dotprod:
         jmp     .L3
 ```
 Remarques : 
+
 On remarque l'utilisation des registres vectorielles AVX (ymm0 et ymm2 .. ) qui s'utilise que dans des code purement vectorielle, mais on remarque de quelques instructions scalaires quand la vectorisation est impossible.
 On remarque aussi l'utilisation de VFMADD231SD ymm0, ymm2, YMMWORD PTR [rsi] qui Multiplie la valeur à virgule flottante double précision scalaire.
 
 
 # Compilateur x86-64 Clang 11.0.0
 
-Premier Code : 
 -O1 :
 ```
 dotprod:                                # @dotprod
@@ -518,7 +520,9 @@ dotprod:                                # @dotprod
         jne     .LBB0_9
         jmp     .LBB0_10
 ```
-Au niveau -O4 : Le compilateur Clang vectorise le programme et remplace toutes les instruction scalaires avec des instructions vectorielles sauf dans les cas ou l'utilisation de la vectorisation est ( movupd, mulpd ).
+Au niveau -O4 :
+
+Le compilateur Clang vectorise le programme et remplace toutes les instruction scalaires avec des instructions vectorielles sauf dans les cas ou l'utilisation de la vectorisation est ( movupd, mulpd ).
 
 kamikaze:
 ```
@@ -610,7 +614,8 @@ dotprod:                                # @dotprod
         jne     .LBB0_9
         jmp     .LBB0_10
 ```
-Remarque : 
+Remarques : 
+
 On remarque l'utilisation des registres vectorielles AVX (ymm0 et ymm2 .. ) donc on conclue que Clang a procédé à la vectorisation définitive du programme, mais on remarque de quelques instructions scalaires quand la vectorisation est impossible.
 
 # Code déroulé 2 fois : 
@@ -682,6 +687,7 @@ dotprod_unroll2:
         pxor    xmm0, xmm0
         ret
 ```
+
 -O3 :
 ```
 dotprod_unroll2:
@@ -893,6 +899,17 @@ dotprod_unroll2:
         jmp     .L3
 ```
 
+Remarques : 
+
+Au niveau -O1 et -O2 (Addition et multiplication scalaire): Le compilateur au niveau -O2 et inférieur il utilise que des instructions scalaires.
+
+Au niveau -O3 (Addition scalaire et multiplication vectorielle): Le compilateur GCC utilise l'addition scalaire et la mutliplication vectorielle.
+
+Au niceau -Ofast : GCC utilise l'addition et la mutiplication vectorielle.
+
+Avec les flags de kamikaze (utilisation des registres vectorielles et de fma et addition/multiplication vectorielle ): GCC utilise des registres vectorielles AVX (ymm0 et ymm2 .. ) donc il a procédé à la vectorisation définitive du programme, mais utilise quelques instructions scalaires quand la vectorisation est impossible. Le code est plus long que les codes des autres niveaux.
+
+
 # Compilateur x86-64 Clang 11.0.0 :
 ```
 double dotprod_unroll2(double *restrict a, double *restrict b, unsigned long long n)
@@ -955,6 +972,7 @@ dotprod_unroll2:                        # @dotprod_unroll2
         addsd   xmm0, xmm1
         ret
 ```
+
 -O3 :
 ```
 dotprod_unroll2:                        # @dotprod_unroll2
@@ -976,6 +994,7 @@ dotprod_unroll2:                        # @dotprod_unroll2
         addsd   xmm0, xmm1
         ret
 ```
+
 -Ofast :
 ```
 dotprod_unroll2:                        # @dotprod_unroll2
@@ -997,6 +1016,7 @@ dotprod_unroll2:                        # @dotprod_unroll2
         addsd   xmm0, xmm1
         ret
 ```
+
 kamikaze:
 ```
 dotprod_unroll2:                        # @dotprod_unroll2
@@ -1015,7 +1035,13 @@ dotprod_unroll2:                        # @dotprod_unroll2
         vaddsd  xmm0, xmm1, xmm0
         ret
 ```
+Remarques : 
 
+Au niveau -O1 (Addition et multiplication scalaire) : Le compilateur Clang utilise au niveau -O2 et inférieur que des instructions scalaires, le code est long en comparaison au niveau -O2.
+
+Au niveau -O2 et -O3 et -Ofast ( Addition scalaire et multiplication vectorielle ) : Aucun différence entre les 3 niveaux -O2/-O3/-Ofast. Le compilateur Clang et commence l'optimisation des vecteures et la vectorisation de la multiplication ce qui minimise le nombre de ligne de code en comparaison avec le niveau -O1 et le niveau -O2 dans le code sans déroulement.
+
+Avec les flags de kamikaze (utilisation des registres vectorielles et de fma et addition/multiplication vectorielle ): fma c'est une addition et multiplication vectorielle très optimisé. Clang utilise des registres vectorielles AVX (ymm0 et ymm2 .. ) donc il a procédé à la vectorisation définitive du programme, mais utilise quelques instructions scalaires quand la vectorisation est impossible et les lignes de code sont plus court.
 
 
 # Comparaison des performances de compilation GCC VS Clang 
